@@ -17,15 +17,17 @@ namespace EPD_Finder.Services
         {
             var url = await GetEnummersokUrl(eNumber);
             var supplierID = await GetSupplierIdFromEnumberWithAsync(url, eNumber);
-            if (supplierID == null)
-                throw new ArgumentException("Ej hittad");
-            string pdfUrl = $"{BaseUrl}EPD_{supplierID}_{eNumber}.pdf";
-            if (await IsLinkValid(pdfUrl))
+            string pdfUrl = "";
+            if (supplierID != null)
             {
+                pdfUrl = $"{BaseUrl}EPD_{supplierID}_{eNumber}.pdf";
                 return pdfUrl;
             }
-            pdfUrl = $"{BaseUrl}EPD_{eNumber}.pdf";
-            return pdfUrl;
+            else
+            {
+                pdfUrl = $"{BaseUrl}EPD_{eNumber}.pdf";
+                return pdfUrl;
+            } 
         }
         private async Task<string> GetEnummersokUrl(string eNumber)
         {
@@ -73,25 +75,6 @@ namespace EPD_Finder.Services
             {
                 _logger.LogError(ex, "Fel vid hämtning av sista numret från produkt-URL för e-nummer {Enummer}", eNumber);
                 return null;
-            }
-        }
-        private async Task<bool> IsLinkValid(string url)
-        {
-            try
-            {
-                var response = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Head, url));
-                if (response.IsSuccessStatusCode)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            catch
-            {
-                return false;
             }
         }
     }

@@ -1,109 +1,137 @@
-﻿@{
+@{
 	ViewData["Title"] = "EPD Finder";
 }
-<div class="mx-auto col-12 border border-3 bg-primary rounded-5 border-secondary fs-5 m-3 p-3">
-	<ul>
-		<li>
-			Denna sida hjälper dig att hitta länkar till Pdf-filer för EPD information (miljödeklarationer)
-			med hjälp av e-nummer.
-		</li>
-		<li>Man kan söka manuellt eller med excelfil</li>
-		<li>Resultatet är länkar som kan kopieras en och en alternativt kan en excelfil laddas ner.</li>
-		<li><span class="text-warning fw-bold">OBSERERA!</span>...ibland hittas inte alla nummer så kontrollera resultatet.</li>
-		<li><span class="text-danger fw-bold">DISCLAIMER!</span>: Vi (skaparna av denna sida) tar inget ansvar för felaktig information hittad via vår tjänst då vi endast söker efter filerna på internet.</li>
-	</ul>
-</div>
-<div class="mx-auto col-12 col-lg-6 border border-3 bg-primary rounded-5 border-secondary fs-5 m-3 p-3">
-	<label class="d-block text-center text-light mb-0 fs-3">Välj källor:</label>
-	<div class="d-flex flex-wrap justify-content-center gap-3 mt-2">
-		<div class="form-check" style="display: flex; align-items: center; gap: 0.4rem;">
-			<input class="form-check-input border-2 border-light" type="checkbox" name="sources" id="sourceEnummersok" value="E-nummersök" checked>
-			<label class="form-check-label" for="sourceEnummersok">E-nummersök</label>
-		</div>
-		<div class="form-check" style="display: flex; align-items: center; gap: 0.4rem;">
-			<input class="form-check-input border-2 border-light" type="checkbox" name="sources" id="sourceAhlsell" value="Ahlsell" checked>
-			<label class="form-check-label" for="sourceAhlsell">Ahlsell</label>
-		</div>
-@* 		<div class="form-check" style="display: flex; align-items: center; gap: 0.4rem;">
-			<input class="form-check-input border-2 border-light" type="checkbox" name="sources" id="sourceSolar" value="Solar" checked>
-			<label class="form-check-label" for="sourceSolar">Solar</label>
-		</div>
-		<div class="form-check" style="display: flex; align-items: center; gap: 0.4rem;">
-			<input class="form-check-input border-2 border-light" type="checkbox" name="sources" id="sourceOnninen" value="Onninen" checked>
-			<label class="form-check-label" for="sourceOnninen">Onninen</label>
-		</div> *@
-	</div>
+<div class="mx-auto col-lg-8 col-12 text-light border border-1 bg-primary rounded-5 border-black fs-6 m-2 p-3">
+	<div class="mb-2">Denna sida hjälper dig att hitta länkar till Pdf-filer för miljödeklarationer(EPD'er) med hjälp av e-nummer.</div>
+	<div><span class="text-danger fw-bold">DISCLAIMER!</span>: Vi (skaparna av denna sida) tar inget ansvar för felaktig information hittad via vår tjänst då vi endast söker efter filerna på internet.</div>
 </div>
 
-<form id="epdForm" enctype="multipart/form-data" class="mx-auto m-3 justify-content-center">
-	<div class="mx-auto col-12 col-lg-6 border border-3 bg-primary rounded-5 border-secondary fs-5 m-3 p-3">
-		<label class="d-block text-center text-light mb-0 fs-3">Välj sökmetod:</label>
-		<div class="d-block text-center row justify-content-center m-0">
-			<div class="col-5 form-check form-check-inline">
-				<input class="form-check-input border-2 border-light" type="radio" name="inputType" id="inputText" value="text">
-				<label class="form-check-label" for="inputText">Mata in manuellt</label>
-			</div>
-			<div class="col-5 form-check form-check-inline">
-				<input class="form-check-input border-2 border-light" type="radio" name="inputType" id="inputFile" value="file">
-				<label class="form-check-label" for="inputFile">Ladda upp Excelfil</label>
-			</div>
+<form id="epdForm" enctype="multipart/form-data" class="mx-auto col-lg-10 col-12 m-2 pb-3 border-3 justify-content-center">
+	<div id="inputdiv" class="p-0 m-0 container">
+		<div class="row d-flex text-center justify-content-center">
+			<label class="text-light m-2 fs-5">Sök manuellt eller med Excel-fil</label>
 		</div>
-	</div>
-	<div id="inputdiv" class="mx-auto col-12 col-lg-10  align-items-center">
-		<!-- Div för manuellt inmatning -->
-		<div id="textInputDiv" style="display:none;" class="text-center mx-auto col-12 col-lg-7 border border-3 bg-primary rounded-5 border-secondary fs-5 m-3 p-3">
-			<label class="text-light mb-1 fs-3">Mata in E-nummer (radbrytning eller komma):</label>
-			<textarea id="enumbersText" name="eNumbers" rows="4" style="width:100%;" class="rounded-2" placeholder="0017720
+		<div class="row d-flex justify-content-center container p-0 m-0">
+			<div class="row d-flex justify-content-center col-xxl-5 col-xl-6 col-lg-7 col-md-10 col-12">
+				<div class="d-flex align-items-end p-0 px-2">
+					<button type="button" id="toggleTextBtn" class="btn btn-primary p-2 m-0"><i class="fa-solid fa-magnifying-glass me-2"></i>Manuell</button>
+					<button type="button" id="toggleFileBtn" class="btn btn-outline-light p-2 m-0"><i class="fa-solid fa-arrow-up-from-bracket me-2"></i>Excel</button>
+					<button type="button" id="toggleSettingsBtn" class="btn btn-sm btn-outline-light ms-auto"><i class="fa-solid fa-gear"></i></button>
+				</div>
+
+				<div class="p-3 border border-1 bg-primary rounded-4 border-black">
+
+					<!-- Div för manuellt inmatning -->
+					<div id="textInputDiv" class="input-section fs-5" style="display: block; min-height: 19rem">
+						<textarea id="enumbersText" name="eNumbers" rows="8" style="width:100%;" class="rounded-4" placeholder="Ange E-nummer:
+0017720
 0000820
-0055270"
-					  oninvalid="this.setCustomValidity('Vänligen mata in minst ett E-nummer')"
-					  oninput="this.setCustomValidity('')"></textarea>
-			<div class="mt-4 text-center">
-				<button class="btn w-15 btn-light" type="submit"><i class="fa-solid fa-magnifying-glass me-2"></i>Sök EPD-länkar</button>
+0055270
+
+Eller
+0017720,0000820,0055270"
+								  oninvalid="this.setCustomValidity('Vänligen mata in minst ett E-nummer')"
+								  oninput="this.setCustomValidity('')"></textarea>
+						<div class="mt-2 d-flex justify-content-end">
+							<button type="button" id="clearTextBtn" class="btn btn-sm btn-dark">
+								<i class="fa-solid fa-trash me-2"></i>Rensa
+							</button>
+						</div>
+					</div>
+					<!-- Div för filuppladdning -->
+					<div id="fileInputDiv" class="input-section fs-5" style="display:none; min-height: 19rem">
+						<div id="dropZone" class="border rounded bg-dark rounded-4 p-3 text-center" style="cursor: pointer; min-height: 15rem">
+							<div class="text-light mb-2">Släpp Excel-fil här</div>
+							<i id="cloud" class="fa-solid fa-cloud-arrow-up fa-3x mb-2"></i>
+							<div>
+								<button type="button" id="browseBtn" class="btn btn-secondary mb-2">Välj fil</button>
+							</div>
+							<div class="d-flex justify-content-center align-items-center text-sm-center gap-2">
+								<span id="fileName" class="small text-truncate fs-6 fst-italic">Ingen fil vald</span>
+								<span id="fileCheck" class="fs-6" style="display:none;">✔</span>
+							</div>
+							<input type="file" id="fileInput" name="file" accept=".csv,.xlsx" style="display:none;">
+						</div>
+						<div class="d-flex justify-content-end mt-3">
+							<button type="button" id="clearFileBtn" class="btn btn-sm btn-dark">
+								<i class="fa-solid fa-trash me-2"></i>Rensa
+							</button>
+						</div>
+					</div>
+					<!-- Div för settings -->
+					<div id="SettingsDiv" class="input-section fs-5" style="display:none; min-height: 19rem">
+						<label class="d-block text-center text-light mb-2 fs-6">Välj källor:</label>
+						<div class="border border-1 border-light rounded bg-dark rounded-4 p-3 text-center" style="cursor: pointer; min-height: 15rem">
+							<div class="d-flex align-items-center form-check border border-1 border-black rounded bg-primary rounded-4 p-1 mx-5">
+								<label class="form-check-label text-light p-0 m-0 ms-4" for="sourceEnummersok">E-nummersök</label>
+								<input class="form-check-input border-2 border-light p-0 m-0 ms-auto me-4" type="checkbox" name="sources" id="sourceEnummersok" value="E-nummersök" checked>
+							</div>
+							<div class="d-flex align-items-center form-check border border-1 border-black rounded bg-primary rounded-4 p-1 mx-5">
+								<label class="form-check-label text-light p-0 m-0 ms-4" for="sourceAhlsell">Ahlsell</label>
+								<input class="form-check-input border-2 border-light p-0 m-0 ms-auto me-4" type="checkbox" name="sources" id="sourceAhlsell" value="Ahlsell" checked>
+							</div>
+							<div class="d-flex align-items-center form-check border border-1 border-black rounded bg-primary rounded-4 p-1 mx-5">
+								<label class="form-check-label text-light p-0 m-0 ms-4" for="sourceSolar">Solar</label>
+								<input class="form-check-input border-2 border-light p-0 m-0 ms-auto me-4" type="checkbox" name="sources" id="sourceSolar" value="Solar" checked>
+							</div>
+							<div class="d-flex align-items-center form-check border border-1 border-black rounded bg-primary rounded-4 p-1 mx-5">
+								<label class="form-check-label text-light p-0 m-0 ms-4" for="sourceSolar">Sonepar</label>
+								<input class="form-check-input border-2 border-light p-0 m-0 ms-auto me-4" type="checkbox" name="sources" id="sourceSonepar" value="Sonepar" checked>
+							</div>
+							<div class="d-flex align-items-center form-check border border-1 border-black rounded bg-primary rounded-4 p-1 mx-5">
+								<label class="form-check-label text-light p-0 m-0 ms-4" for="sourceSolar">Rexel</label>
+								<input class="form-check-input border-2 border-light p-0 m-0 ms-auto me-4" type="checkbox" name="sources" id="sourceRexel" value="Rexel" checked>
+							</div>
+@* 							<div class="d-flex align-items-center form-check border border-1 border-black rounded bg-primary rounded-4 p-1 mx-5">
+								<label class="form-check-label text-light p-0 m-0 ms-4" for="sourceSolar">Onninen</label>
+								<input class="form-check-input border-2 border-light p-0 m-0 ms-auto me-4" type="checkbox" name="sources" id="sourceOnninen" value="Onninen" checked>
+							</div> *@
+						</div>
+						<div class="d-flex align-items-center form-check p-2 mx-5">
+							<label class="form-check-label text-light p-0 m-0 ms-4" for="sourceSolar">Visa källor i resultatet</label>
+							<input class="form-check-input border-2 border-light p-0 m-0 ms-auto me-4" type="checkbox" name="sources" id="showSources">
+						</div>
+					</div>
+					<div class="text-center">
+						<div id="SubmitError" class="text-danger text-Center fs-6 mb-2" style="visibility: hidden;">Vänligen ange E-nummer eller välj en fil.</div>
+						<button id="SearchBtn" class="btn btn-light border-2 border-black" type="submit"><i class="fa-solid fa-magnifying-glass me-2"></i>Sök EPD-länkar</button>
+						<button id="BackBtn" class="btn btn-light border-2 border-black" style="display:none" type="button"><i class="fa-solid fa-arrow-left me-2"></i>Tillbaka</button>
+					</div>
+				</div>
 			</div>
-		</div>
-		<!-- Div för filuppladdning -->
-		<div id="fileInputDiv" style="display:none;" class="mx-auto col-12 col-lg-7 text-center mx-auto border border-3 bg-primary rounded-5 border-secondary fs-5 m-3 p-3">
-			<label class="text-light mb-1 fs-3">Ladda upp en fil (Excel/CSV):</label><br />
-			<input type="file" class="flex-shrink-1 text-truncate small" name="file" accept=".csv,.xlsx" id="fileInput"
-					   oninvalid="this.setCustomValidity('Vänligen välj en fil eller byt inmatningsmetod')"
-					   oninput="this.setCustomValidity('')" />
-				<span id="fileCheck" class="fs-6" style="display:none;">✔</span>
-			<div class="mt-4 text-center">
-				<button class="btn w-15 btn-light" type="submit"><i class="fa-solid fa-magnifying-glass me-2"></i>Sök EPD-länkar</button>
+			<div class="row justify-content-center mt-2 text-center col-12">
+				<div class="text-light text-sm-center mt-2"><span class="text-warning fw-bold">OBSERERA:</span> ibland hittas inte alla nummer - kontrollera alltid resultatet.</div>
 			</div>
 		</div>
 	</div>
-
-
 </form>
-<div id="loadingContainer" style="display:none;" class="mx-auto col-12 border border-4 bg-primary rounded-5 border-secondary fs-5 m-3 p-3">
+<div id="loadingContainer" style="display:none;" class="mx-auto col-12 col-lg-8 border border-1 bg-primary rounded-5 border-black fs-5 m-2 p-3">
 	<div class="bg-dark m-1 p-2 rounded-5" style="position: relative;">
 		<span id="progressBarText" class="text-light" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">></span>
 		<div id="progressBar" class="bg-success" style="width: 0%; max-width:100%; height: 15px; border-radius: 7px;"></div>
 	</div>
-	<div id="progressText" class="mt-1 text-center"></div>
+	<div id="progressText" class="mt-1 fs-6 fst-italic text-center"></div>
 </div>
 
-<div id="downloadForm" class="mx-auto col-12 col-lg-6" style="display:none;">
+<div id="downloadForm" class="mx-auto col-5 col-lg-3 col-xl-3" style="display:none;">
 	<form id="downloadExcelForm">
-		<div id="downloadFinishedDiv" class="text-center text-light fs-3">Sökning slutförd ✅</div>
-		<div class="text-center mx-auto border border-3 bg-primary rounded-5 border-secondary fs-5 m-3 p-3">
-			<div class="text-light mb-1 me-2 fs-3">Ladda ner resultatet</div>
-			<button class="btn btn-warning text-center mb-3" type="submit"><i class="fa-solid fa-download me-2"></i>Spara Excel-fil</button>
-			<div class="text-light mb-1 me-2 fs-3">Eller</div>
-			<a asp-controller="Home" asp-action="Index" class="btn btn-lg btn-light text-center"><i class="fa-solid fa-magnifying-glass me-2"></i></i>Sök igen</a>
+		<div id="downloadFinishedDiv" class="text-center text-light fs-5">Sökning slutförd ✅</div>
+		<div class="text-center mx-auto border border-1 bg-primary rounded-5 border-black fs-6 m-2 p-3">
+			<div class="text-light mb-1 me-2 fs-6">Ladda ner resultatet</div>
+			<button class="btn btn-warning border-2 border-black text-center mb-1" type="submit"><i class="fa-solid fa-download me-2"></i>Spara Excel-fil</button>
+			<div class="text-light mb-1 fs-6">Eller</div>
+			<button id="newSearch" class="btn btn-light border-2 border-black text-center" type="button"><i class="fa-solid fa-magnifying-glass me-2"></i>Sök igen</button>
 		</div>
 
 	</form>
 </div>
 
-<div id="outputTable" class="mx-auto col-12 mt-3 border border-3 border-secondary bg-primary rounded-5 p-3" style="display:none;">
+<div id="outputTable" class="mx-auto col-12 mt-3 border border-1 border-black bg-primary rounded-5 p-3" style="display:none;">
 	<table class="table w-100 mt-3">
 		<thead>
 			<tr class="bg-secondary">
 				<th class="text-light artnr">ArtNr</th>
-				<th class="text-light source">Source:</th>
+				<th class="text-light source source-col">Source:</th>
 				<th class="text-light epd">EPD-länkar</th>
 				<th class="text-light copy">Kopiera</th>
 			</tr>

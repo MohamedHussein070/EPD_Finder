@@ -1,5 +1,9 @@
-﻿using EPD_Finder.Models;
+﻿using DocumentFormat.OpenXml.Drawing.Diagrams;
+using DocumentFormat.OpenXml.Vml;
+using EPD_Finder.Models;
 using EPD_Finder.Services.IServices;
+using System.Net;
+using System.Text.RegularExpressions;
 
 namespace EPD_Finder.Services
 {
@@ -9,18 +13,32 @@ namespace EPD_Finder.Services
         private readonly ILogger<EpdService> _logger;
         private readonly AhlsellSearch _ahlsell;
         private readonly EnummersokSearch _enummersok;
-        private readonly OnninenSearch _onninen;
         private readonly SolarSearch _solar;
+        private readonly SoneparSearch _sonepar;
+        private readonly RexelSearch _rexel;
+        //private readonly OnninenSearch _onninen;
+        private readonly Schneider _schneider;
 
-        public EpdService(HttpClient client, ILogger<EpdService> logger)
+        public EpdService(HttpClient client,
+            ILogger<EpdService> logger,
+            AhlsellSearch ahlsell,
+            EnummersokSearch enummersok,
+            SolarSearch solar,
+            SoneparSearch sonepar,
+            RexelSearch rexel,
+            //OnninenSearch onninen,
+            Schneider schneider
+            )
         {
             _client = client;
-            _client.DefaultRequestHeaders.Add("User-Agent", "C# App");
             _logger = logger;
-            _ahlsell = new AhlsellSearch(_client, _logger);
-            _enummersok = new EnummersokSearch(_client, _logger);
-            _onninen = new OnninenSearch(_client, _logger);
-            _solar = new SolarSearch(_client, _logger);
+            _ahlsell = ahlsell;
+            _enummersok = enummersok;
+            _solar = solar;
+            _sonepar = sonepar;
+            _rexel = rexel;
+            //_onninen = onninen;
+            _schneider = schneider;
         }
         public List<string> ParseInput(string eNumbers, IFormFile file)
         {
@@ -68,52 +86,104 @@ namespace EPD_Finder.Services
 
         public async Task<ArticleResult> TryGetEpdLink(string eNumber, List<string> selectedSources)
         {
+            var tasks = new List<Task<ArticleResult>>();
+
             if (selectedSources.Contains("E-nummersök"))
-            {
-                var pdfUrl = await _enummersok.TryGetEpdLink(eNumber);
-                if (await IsLinkValid(pdfUrl))
-                    return new ArticleResult { ENumber = eNumber, Source = "E-nummersök", EpdLink = pdfUrl };
-            }
+                tasks.Add(TryGetSourceLink(eNumber, "E-nummersök", _enummersok));
+
             if (selectedSources.Contains("Ahlsell"))
-            {
-                var pdfUrl = await _ahlsell.TryGetEpdLink(eNumber);
-                if (await IsLinkValid(pdfUrl))
-                    return new ArticleResult { ENumber = eNumber, Source = "Ahlsell", EpdLink = pdfUrl };
-            }
+                tasks.Add(TryGetSourceLink(eNumber, "Ahlsell", _ahlsell));
 
             if (selectedSources.Contains("Solar"))
-            {
-                var pdfUrl = await _solar.TryGetEpdLink(eNumber);
-                if (await IsLinkValid(pdfUrl))
-                    return new ArticleResult { ENumber = eNumber, Source = "Solar", EpdLink = pdfUrl };
-            }
+                tasks.Add(TryGetSourceLink(eNumber, "Solar", _solar));
 
-            if (selectedSources.Contains("Onninen"))
-            {
-                var pdfUrl = await _onninen.TryGetEpdLink(eNumber);
-                if (await IsLinkValid(pdfUrl))
-                    return new ArticleResult { ENumber = eNumber, Source = "Onninen", EpdLink = pdfUrl };
-            }
+            if (selectedSources.Contains("Sonepar"))
+                tasks.Add(TryGetSourceLink(eNumber, "Sonepar", _sonepar));
+
+            if (selectedSources.Contains("Rexel"))
+                tasks.Add(TryGetSourceLink(eNumber, "Rexel", _rexel));
+
+            //if (selectedSources.Contains("Onninen"))
+            //    tasks.Add(TryGetSourceLink(eNumber, "Onninen", _onninen));
+
+            var results = await Task.WhenAll(tasks);
+
+            // Returnera första som lyckas
+            var firstValid = results.FirstOrDefault(r => r != null);
+            if (firstValid != null)
+                return firstValid;
 
             throw new ArgumentException("Ej hittad");
+        }
+        private async Task<ArticleResult> TryGetSourceLink(string eNumber, string sourceName, dynamic sourceService)
+        {
+            try
+            {
+                var pdfUrl = await sourceService.TryGetEpdLink(eNumber);
+                if (!string.IsNullOrEmpty(pdfUrl) && await IsLinkValid(pdfUrl))
+                    return new ArticleResult
+                    {
+                        ENumber = eNumber,
+                        Source = sourceName,
+                        EpdLink = pdfUrl
+                    };
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error fetching EPD for {eNumber} ,{ex}");
+            }
+
+            return null;
         }
 
         private async Task<bool> IsLinkValid(string url)
         {
             try
             {
-                var response = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Head, url));
-                if (response.IsSuccessStatusCode)
+                if(url.ToLower().Contains("schneider"))
                 {
+                    return await _schneider.TryVerifyLink(url); //special case
+                }
+
+                // First try HEAD request
+                var headRequest = new HttpRequestMessage(HttpMethod.Head, url);
+                var headResponse = await _client.SendAsync(headRequest);
+                if (headResponse.IsSuccessStatusCode) return true;
+                else _logger.LogWarning($"Response code on failed Head requests: {headResponse.StatusCode}");
+
+                // Fallback to GET but only read headers
+                var getResponse = await _client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+
+                if (getResponse.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation($"Response code APPROVED on Get requests: {getResponse}");
                     return true;
                 }
                 else
                 {
+                    if (getResponse.StatusCode.ToString().Contains("404"))
+                    {
+                        _logger.LogWarning($"Response status code:: {getResponse.StatusCode.ToString()}");
+                        _logger.LogWarning($"Response code FAILED on Get requests: {getResponse}");
+                        return false;
+                    }
+                    else if (getResponse.StatusCode.ToString().Contains("403"))
+                    {
+                        var urlMatch = Regex.Match(url, @"https?://\S+?\.pdf(?=(\?|\s|$))", RegexOptions.IgnoreCase);
+                        if (urlMatch.Success)
+                        {
+                            return true;
+                        }
+                    }
+                    _logger.LogWarning($"Response status code:: {getResponse.StatusCode.ToString()}");
+                    _logger.LogWarning($"Response code FAILED on Get requests: {getResponse}");
                     return false;
                 }
             }
-            catch
+            catch (Exception ex) 
             {
+                _logger.LogWarning($"Response code FAILED with Exception: {ex}");
                 return false;
             }
         }

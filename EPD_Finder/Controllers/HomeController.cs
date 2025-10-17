@@ -28,6 +28,18 @@ namespace EPD_Finder.Controllers
         [HttpPost]
         public IActionResult CreateJob(IFormFile file, string eNumbers, [FromForm] List<string> sources)
         {
+            // Ignorera det som inte är synligt
+            if (!string.IsNullOrWhiteSpace(eNumbers) && file != null && file.Length > 0)
+            {
+                // Om båda är ifyllda, använd bara det synliga (t.ex. textfält)
+                // Antag att frontend markerar vilket som är aktivt
+                // Här kan du kontrollera t.ex. en extra "inputType" parameter
+                var activeInput = Request.Form["inputType"];
+                if (activeInput == "text")
+                    file = null;
+                else
+                    eNumbers = null;
+            }
             var list = _epdService.ParseInput(eNumbers, file);
             if (!list.Any()) return BadRequest("Inga E-nummer hittades.");
 
@@ -98,15 +110,13 @@ namespace EPD_Finder.Controllers
             using var workbook = new XLWorkbook();
             var ws = workbook.Worksheets.Add("EPD Links");
             ws.Cell(1, 1).Value = "E-nummer";
-            ws.Cell(1, 2).Value = "Källa";
-            ws.Cell(1, 3).Value = "EPD-länk";
+            ws.Cell(1, 2).Value = "EPD-länk";
             ws.Range(1, 1, 1, 3).Style.Font.Bold = true;
 
             for (int i = 0; i < list.Count; i++)
             {
                 ws.Cell(i + 2, 1).Value = list[i].ENumber;
-                ws.Cell(i + 2, 2).Value = list[i].Source;
-                var cell = ws.Cell(i + 2, 3);
+                var cell = ws.Cell(i + 2, 2);
                 cell.Value = list[i].EpdLink;
                 if (!string.IsNullOrWhiteSpace(list[i].EpdLink) && list[i].EpdLink.StartsWith("http"))
                 {

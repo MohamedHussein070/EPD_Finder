@@ -2,6 +2,13 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
+# installera ca-certificates + curl (för debug)
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
 # Kopiera hela projektmappen
 COPY . ./EPD_Finder
 
@@ -22,7 +29,8 @@ WORKDIR /app
 COPY --from=build /app/EPD_Finder/out ./
 
 # Exponera porten appen använder
-EXPOSE 5000
+EXPOSE 10000
+ENV ASPNETCORE_URLS=http://0.0.0.0:${PORT}
 
 # Starta appen
 ENTRYPOINT ["dotnet", "EPD_Finder.dll"]

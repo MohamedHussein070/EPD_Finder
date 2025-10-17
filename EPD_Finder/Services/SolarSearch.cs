@@ -97,7 +97,7 @@ namespace EPD_Finder.Services
                 var root = jsonDoc.RootElement;
 
                 if (root.TryGetProperty("displayName", out var displayNameProp) &&
-                    displayNameProp.GetString().Contains("EPD", StringComparison.OrdinalIgnoreCase))
+                    displayNameProp.GetString().Contains("EPD", StringComparison.OrdinalIgnoreCase) || displayNameProp.GetString().Contains("miljöprofil", StringComparison.OrdinalIgnoreCase))
                 {
                     epdUrl = root.GetProperty("url").GetString();
                     break; 

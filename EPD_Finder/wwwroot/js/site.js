@@ -1,7 +1,10 @@
 ﻿$(function () {
-    initInputSwitch();
     initFormSubmit();
     initCopyButtons();
+    initFileInput();
+    initClearButtons();
+    initInputSwitch();
+    initTextInput();
 });
 
 // Global variables
@@ -10,39 +13,15 @@ var foundLinks = 0;
 var failedLinks = 0;
 var currentSSE = null;
 
-// Switch input type
-function initInputSwitch() {
-    $("input[name='inputType']").change(function () {
-        if ($(this).val() === "file") {
-            // Hide textarea and reset
-            $("#textInputDiv").hide();
-            $("#enumbersText")
-                .prop("required", false)
-                .val("")
-                .get(0).setCustomValidity("");
+function initClearButtons() {
+    $("#clearTextBtn").click(function () {
+        $("#enumbersText").val('');
+    });
 
-            // Show file input and set required
-            $("#fileInputDiv").show();
-            $("#fileInput")
-                .prop("required", true)
-                .get(0).setCustomValidity("");
-
-            showCheckmark();
-        } else {
-            // Hide file input and reset
-            $("#fileInputDiv").hide();
-            $("#fileInput")
-                .prop("required", false)
-                .val("")
-                .get(0).setCustomValidity("");
-            $("#fileCheck").hide();
-
-            // Show textarea and set required
-            $("#textInputDiv").show();
-            $("#enumbersText")
-                .prop("required", true)
-                .get(0).setCustomValidity("");
-        }
+    $("#clearFileBtn").click(function () {
+        $("#fileInput").val('');
+        $("#fileName").text('Ingen fil vald').removeClass("text-warning");
+        $("#fileCheck").hide();
     });
 }
 
@@ -65,18 +44,112 @@ function reset() {
     $("#progressBar").css("width", "0%");
     $("#progressBarText").text("0 %");
     $("#progressText").html("");
+    $("#loadingContainer").hide();
+    $("#outputTable").hide();
+    window.scrollTo({
+        top: 0,
+        behavior: 'instant'
+    });
+}
+
+// Switch input type
+function initInputSwitch() {
+    var viewHistory = [];
+
+    function switchView(newView) {
+        var currentView = $(".input-section:visible").attr("id");
+
+        // if user clicks settings button again → go back
+        if (currentView === newView && newView === "SettingsDiv" && viewHistory.length > 0) {
+            var prev = viewHistory.pop();
+            return switchView(prev);
+        }
+
+        if (currentView && currentView !== newView) {
+            viewHistory.push(currentView);
+        }
+
+        // Hide all input sections
+        $(".input-section").hide();
+        $("#SearchBtn").show();
+        $("#BackBtn").hide();
+        $("#SubmitError").css("visibility", "hidden");
+
+
+        // Show new view
+        $("#" + newView).show();
+
+        // Update toggle button styles
+        $("#toggleTextBtn, #toggleFileBtn, #toggleSettingsBtn").removeClass("btn-primary").addClass("btn-outline-light");
+        if (newView === "textInputDiv") {
+            $("#toggleTextBtn").addClass("btn-primary").removeClass("btn-outline-light")
+        };
+        if (newView === "fileInputDiv") {
+            $("#toggleFileBtn").addClass("btn-primary").removeClass("btn-outline-light")
+        };
+        if (newView === "SettingsDiv") {
+            $("#toggleSettingsBtn").addClass("btn-primary").removeClass("btn-outline-light")
+            $("#SearchBtn").hide();
+            $("#BackBtn").show();
+        };
+    }
+
+    $("#toggleTextBtn").click(() => switchView("textInputDiv"));
+    $("#toggleFileBtn").click(() => switchView("fileInputDiv"));
+    $("#toggleSettingsBtn").click(() => switchView("SettingsDiv"));
+
+    $("#BackBtn").click(function () {
+        if (viewHistory.length > 0) {
+            var prev = viewHistory.pop();
+            switchView(prev);
+        }
+    });
+}
+
+function initTextInput() {
+    $("#enumbersText").on("input", function () {
+        if ($(this).val().trim().length > 0) {
+            $("#SubmitError").css("visibility", "hidden");
+        }
+    });
 }
 // Form submission
 function initFormSubmit() {
     $("#epdForm").submit(function (e) {
         e.preventDefault();
+
         reset();
-        var formData = new FormData(this);
-        var selectedSources = [];
+
+        var formData = new FormData();
+
+        // Skicka bara det aktiva fältet
+        if ($("#textInputDiv").is(":visible")) {
+            var manualVal = $("#enumbersText").val().trim();
+            if (!manualVal && fileInput) {
+                formData.append("file", fileInput);
+            }
+            if (!manualVal) {
+                $("#SubmitError").text("Vänligen ange ett eller flera E-nummer.").css("visibility", "visible");
+                return;
+            }
+            formData.append("eNumbers", manualVal);
+        } else if ($("#fileInputDiv").is(":visible")) {
+            var fileInput = $("#fileInput")[0].files[0];
+            if (!fileInput) {
+                $("#SubmitError").text("Vänligen ladda upp en Excel-fil.").css("visibility", "visible");
+                return;
+            }
+            formData.append("file", fileInput);
+        }
+
+        // Lägg till valda källor
         $('input[name="sources"]:checked').each(function () {
-            selectedSources.push($(this).val());
+            formData.append('sources', $(this).val());
         });
-        selectedSources.forEach(src => formData.append('sources', src));
+        // Lägg till inputType för backend
+        var activeInput = $("#textInputDiv").is(":visible") ? "text" : "file";
+        formData.append("inputType", activeInput);
+       
         $.ajax({
             url: "/Home/CreateJob",
             type: "POST",
@@ -107,13 +180,27 @@ function preCreateRows(eNumbers, jobId) {
     eNumbers.forEach(num => {
         var row = $("<tr>").attr("data-enumber", num);
         row.append($("<td>").css("position", "relative").text(num));
-        row.append($("<td>").css("position", "relative").text(""));
+        row.append($("<td>").css("position", "relative").addClass("source-col").text(""));
         row.append($("<td>").css("position", "relative").text("Hämtar..."));
         row.append($("<td>").css("position", "relative"));   
         $("#results").append(row);
     });
+    toggleSources();
 
     startSSE(jobId);
+}
+
+function toggleSources() {
+    $("#showSources").change(function () {
+        if ($(this).is(":checked")) {
+            $(".source-col").show();
+        } else {
+            $(".source-col").hide();
+        }
+    });
+
+    // kör vid start också (så det följer default state)
+    $("#showSources").trigger("change");
 }
 
 // SSE
@@ -129,7 +216,6 @@ function startSSE(jobId) {
 
         if (result.EpdLink && result.EpdLink.startsWith("http")) {
             foundLinks++;
-
             var sourceTd = row.find("td").eq(1);
             if (result.Source === "Ahlsell") {
                 sourceTd.text(result.Source || "").removeClass("text-warning").addClass("text-info");
@@ -167,6 +253,10 @@ function startSSE(jobId) {
         currentSSE.close();
         currentSSE = null;
         $("#downloadForm").show();
+        document.getElementById("downloadForm").scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
     });
 
     currentSSE.onerror = function () {
@@ -181,17 +271,10 @@ function updateLoadingbar() {
     $("#progressBar").css("width", percent + "%");
     $("#progressBarText").text(`${percent} %`);
     $("#progressText").html(`
-        <span class="me-3">Hämtade ${foundLinks + failedLinks} av ${totalLinks} länkar</span>
+        <span class="text-light me-3">Hämtade ${foundLinks + failedLinks} av ${totalLinks} länkar</span>
         <span class="text-success me-3">Hittade: ${foundLinks}</span>
         <span class="text-danger me-3">Misslyckade: ${failedLinks}</span>
     `);
-
-    if (percent >= 0 && percent <= 11) {
-        document.getElementById("loadingContainer").scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-    }
 }
 $("#downloadExcelForm").submit(function (e) {
     e.preventDefault();
@@ -225,14 +308,47 @@ function collectResultsFromTable() {
     return JSON.stringify(arr);
 }
 
-$("input[name='inputType']").change(function () {
-    // Scroll the container div into view
-    document.querySelector(".mx-auto").scrollIntoView({
-        behavior: "smooth",
-        block: "center"
-    });
+$(document).on("click", "#newSearch", function () {
+    reset();
 });
 
+function initFileInput() {
+    // Klicka på "Välj fil" öppnar filväljaren
+    $("#browseBtn").click(function () {
+        $("#fileInput").click();
+    });
+
+    // Visa filnamn och checkmark när fil väljs
+    $("#fileInput").on("change", function () {
+        $("#fileName").text(this.files.length > 0 ? this.files[0].name : "").addClass("text-warning");;
+        $("#fileCheck").toggle(this.files.length > 0);
+        $("#SubmitError").css("visibility", "hidden");
+    });
+
+    // Drag & drop highlight
+    $("#dropZone").on("dragover", function (e) {
+        e.preventDefault();
+        $(this).addClass("border-primary bg-light");
+        $("#cloud").addClass("text-white");
+    });
+    $("#dropZone").on("dragleave drop", function (e) {
+        e.preventDefault();
+        $(this).removeClass("border-primary bg-light");
+        $("#cloud").removeClass("text-white");
+    });
+
+    // Hantera fil-drop
+    $("#dropZone").on("drop", function (e) {
+        e.preventDefault();
+        const files = e.originalEvent.dataTransfer.files;
+        if (files.length > 0) {
+            $("#fileInput")[0].files = files; 
+            $("#fileName").text(files[0].name).addClass("text-warning");;
+            $("#fileCheck").show();
+            $("#SubmitError").css("visibility", "hidden");
+        }
+    });
+}
 function showCheckmark() {
     // Show green checkmark when a file is selected
     $("#fileInput").on("change", function () {
